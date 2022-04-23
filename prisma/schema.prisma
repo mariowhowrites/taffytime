@@ -1,0 +1,60 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id    String @id @default(cuid())
+  email String @unique
+  role String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // user settings -- todo: maybe pull into separate table?
+  intervalDuration Int @default(25)
+
+  password Password?
+  notes    Note[]
+  workSessions WorkSession[]
+}
+model WorkSession {
+  id String @id @default(cuid())
+
+  // total amount of time spent in the work session
+  duration Int  
+
+  // total number of cycles completed during the session
+  completedCycles Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  writing String 
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId String
+}
+
+model Password {
+  hash String
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId String @unique
+}
+
+model Note {
+  id    String @id @default(cuid())
+  title String
+  body  String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId String
+}
