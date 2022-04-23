@@ -6,8 +6,8 @@ export function createWorkSession({
   userId,
   duration,
   completedCycles,
-  writing
-}: Pick<WorkSession, "duration" | "completedCycles" | "writing"> & {
+  // add writing arg here and update Pick type accordingly
+}: Pick<WorkSession, "duration" | "completedCycles"> & {
   userId: User["id"]
 }) {
   return prisma.workSession.create({

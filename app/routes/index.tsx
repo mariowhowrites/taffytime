@@ -47,7 +47,7 @@ export const action: ActionFunction = async ({ request }) => {
     userId,
     duration: parseInt(duration, 10),
     completedCycles: 0,
-    writing
+    // add writing variable here
   });
 
   return json({ duration: workSession.duration });
