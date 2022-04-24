@@ -1,5 +1,5 @@
 import { User } from "@prisma/client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActionFunction,
   json,
@@ -10,6 +10,8 @@ import {
 import { useEffectReducer } from "use-effect-reducer";
 import { createWorkSession } from "~/models/work-session.server";
 import { getUser, getUserId } from "~/session.server";
+import { throttle } from "lodash";
+import { useBackgroundColor } from "~/root";
 
 // the timer duration in minutes
 const defaultTimerDuration = 25;
@@ -49,6 +51,10 @@ const timerReducer = (state: ReducerType, event: EventType, exec) => {
     },
 
     [TimerStates.WORKING]: () => {
+      if (state.status === TimerStates.BREAKING) {
+        exec({ type: TimerStates.READY });
+      }
+
       exec({ type: TimerStates.WORKING });
 
       return {
@@ -57,7 +63,10 @@ const timerReducer = (state: ReducerType, event: EventType, exec) => {
     },
 
     [TimerStates.PAUSED]: () => {
-      if (state.status !== TimerStates.WORKING) {
+      if (
+        state.status !== TimerStates.WORKING &&
+        state.status !== TimerStates.BREAKING
+      ) {
         return state;
       }
 
@@ -101,9 +110,7 @@ export default function Index() {
   const { user } = useLoaderData<LoaderData>();
   // timerEnd = date (25 min in the future)
   // timer = timerEnd - now
-
   const submit = useSubmit();
-
   const [writing, setWriting] = useState("");
 
   const onWritingChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -120,11 +127,11 @@ export default function Index() {
   const [secondsValue, setSecondsValue] = useState(60);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
+  const { setBackgroundColor } = useBackgroundColor();
+
   const startTimerInterval = () => {
     setTimerIntervalID(
       setInterval(() => {
-        
-
         setSecondsValue((seconds) => {
           let newSeconds = seconds - 1;
 
@@ -161,9 +168,6 @@ export default function Index() {
       },
 
       [TimerStates.WORKING]: () => {
-        setMinutesValue(user ? user.intervalDuration : defaultTimerDuration);
-        setSecondsValue(60);
-
         stopTimerInterval();
         startTimerInterval();
       },
@@ -173,8 +177,8 @@ export default function Index() {
       },
 
       [TimerStates.BREAKING]: () => {
-        setMinutesValue(0);
-        setSecondsValue(30);
+        setMinutesValue(5);
+        setSecondsValue(60);
 
         stopTimerInterval();
         startTimerInterval();
@@ -195,56 +199,121 @@ export default function Index() {
     }
   );
 
+  const switchStates = useRef(
+    throttle((state: ReducerType) => {
+      const newState =
+        state.status === TimerStates.BREAKING
+          ? TimerStates.WORKING
+          : TimerStates.BREAKING;
+
+      dispatch({ type: newState });
+    }, 500)
+  );
+
+  useEffect(() => {
+    if (minutesValue === 0 && secondsValue === 0) {
+      switchStates.current(timerState);
+
+      setTimeout(() => switchStates.current.cancel(), 100);
+    }
+  }, [minutesValue, secondsValue, timerState, dispatch]);
+
   const secondsLeftString = useMemo(() => {
     return secondsValue === 60
       ? "00"
       : secondsValue.toString().padStart(2, "0");
   }, [secondsValue]);
 
+  const statusEmoji = useMemo(() => {
+    const statusEmojiMap = {
+      [TimerStates.READY]: "🍬",
+      [TimerStates.WORKING]: "🌱",
+      [TimerStates.BREAKING]: "🌻",
+      [TimerStates.PAUSED]: "🌆",
+    };
+
+    return statusEmojiMap[
+      timerState.status as Exclude<keyof typeof TimerStates, "STOPPED">
+    ];
+  }, [timerState]);
+
+  useEffect(() => {
+    const statusBackgroundColorMap = {
+      [TimerStates.READY]: "bg-sky-500",
+      [TimerStates.WORKING]: "bg-pink-500",
+      [TimerStates.BREAKING]: "bg-green-500",
+      [TimerStates.PAUSED]: "bg-blue-600",
+    };
+
+    if (Object.keys(statusBackgroundColorMap).includes(timerState.status)) {
+      setBackgroundColor(
+        statusBackgroundColorMap[
+          timerState.status as Exclude<keyof typeof TimerStates, "STOPPED">
+        ]
+      );
+    }
+  }, [setBackgroundColor, timerState]);
+
   return (
     <div className="flex w-full grow flex-col items-center justify-center">
-      <div className="flex h-1/2 items-end">
-        <p className="pb-4 text-9xl text-white">
+      <div className="flex h-1/2 flex-col justify-end">
+        <div className="text-center text-6xl">{statusEmoji}</div>
+        <p className="mt-6 pb-4 text-9xl text-white">
           {minutesValue}:{secondsLeftString}
         </p>
       </div>
       <div className="flex h-1/2 flex-col gap-4">
-        {timerState.status !== TimerStates.WORKING ? (
-          timerState.status === TimerStates.PAUSED ? (
-            <button
-              className="hover:bg-shadow-xl rounded-2xl bg-green-500 px-4 py-2 font-bold text-white shadow hover:bg-green-700"
-              onClick={() => dispatch({ type: TimerStates.WORKING })}
-            >
-              Resume Timer!
-            </button>
-          ) : (
-            <button
-              className="hover:bg-shadow-xl rounded-2xl bg-green-500 px-4 py-2 font-bold text-white shadow hover:bg-green-700"
-              onClick={() => dispatch({ type: TimerStates.WORKING })}
-            >
-              Start Timer!
-            </button>
-          )
-        ) : (
+        {timerState.status === TimerStates.READY ? (
+          <button
+            className="transition transition-200 hover:bg-shadow-xl rounded-2xl bg-green-500 px-4 py-2 font-bold text-white shadow hover:bg-green-700 shadow hover:shadow-lg"
+            onClick={() => {
+              dispatch({ type: TimerStates.READY });
+              dispatch({ type: TimerStates.WORKING });
+            }}
+          >
+            Start Timer!
+          </button>
+        ) : null}
+        {timerState.status === TimerStates.WORKING ||
+        timerState.status === TimerStates.BREAKING ? (
           <>
             <button
-              className="hover:bg-shadow-xl rounded-2xl bg-red-600 px-4 py-2 font-bold text-white shadow hover:bg-red-800"
+              className="transition transition-200 hover:bg-shadow-xl rounded-2xl bg-blue-600 px-4 py-2 font-bold text-white shadow hover:bg-blue-800 shadow hover:shadow-lg"
               onClick={() => dispatch({ type: TimerStates.PAUSED })}
             >
               Pause Timer!
             </button>
+            <button
+              className="transition transition-200 hover:bg-shadow-xl rounded-2xl bg-blue-600 px-4 py-2 font-bold text-white shadow hover:bg-blue-800 shadow hover:shadow-lg"
+              onClick={() => dispatch({ type: TimerStates.STOPPED })}
+            >
+              Stop Timer!
+            </button>
+            <button
+              className="transition transition-200 hover:bg-shadow-xl rounded-2xl bg-blue-600 px-4 py-2 font-bold text-white shadow hover:bg-blue-800 shadow hover:shadow-lg"
+              onClick={() =>
+                dispatch({
+                  type:
+                    timerState.status === TimerStates.WORKING
+                      ? TimerStates.BREAKING
+                      : TimerStates.WORKING,
+                })
+              }
+            >
+              Go to {" "}
+               {timerState.status === TimerStates.WORKING ? "Break" : "Work"}!
+            </button>
           </>
-        )}
-        {timerState.status === TimerStates.WORKING ? (
+        ) : null}
+        {timerState.status === TimerStates.PAUSED ? (
           <button
-            className="hover:bg-shadow-xl rounded-2xl bg-red-600 px-4 py-2 font-bold text-white shadow hover:bg-red-800"
-            onClick={() => dispatch({ type: TimerStates.STOPPED })}
+            className="hover:bg-shadow-xl rounded-2xl bg-green-500 px-4 py-2 font-bold text-white shadow hover:bg-green-700"
+            onClick={() => dispatch({ type: TimerStates.WORKING })}
           >
-            Stop Timer!
+            Resume Timer!
           </button>
         ) : null}
         {/* textarea goes somewhere around here */}
-        <textarea onChange={onWritingChange}></textarea>
       </div>
     </div>
   );
