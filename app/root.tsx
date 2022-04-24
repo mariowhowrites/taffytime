@@ -21,7 +21,7 @@ export const links: LinksFunction = () => {
 
 export const meta: MetaFunction = () => ({
   charset: "utf-8",
-  title: "BubbleTime Pomodoro Timer",
+  title: "TaffyTime Pomodoro Timer",
   viewport: "width=device-width,initial-scale=1",
 });
 
@@ -53,7 +53,7 @@ export default function App() {
                   pathname: "/",
                 }}
               >
-                BubbleTime
+                TaffyTime
               </Link>
               <div className="flex gap-2">
                 {user !== null ? (
