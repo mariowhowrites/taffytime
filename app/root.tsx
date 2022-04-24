@@ -9,11 +9,13 @@ import {
   Scripts,
   ScrollRestoration,
   useLoaderData,
+  useOutletContext,
 } from "remix";
 import type { LinksFunction, MetaFunction, LoaderFunction } from "remix";
 
 import tailwindStylesheetUrl from "./styles/tailwind.css";
 import { getUser } from "./session.server";
+import { Dispatch, SetStateAction, useState } from "react";
 
 export const links: LinksFunction = () => {
   return [{ rel: "stylesheet", href: tailwindStylesheetUrl }];
@@ -21,7 +23,7 @@ export const links: LinksFunction = () => {
 
 export const meta: MetaFunction = () => ({
   charset: "utf-8",
-  title: "BubbleTime Pomodoro Timer",
+  title: "TaffyTime Pomodoro Timer",
   viewport: "width=device-width,initial-scale=1",
 });
 
@@ -37,6 +39,7 @@ export const loader: LoaderFunction = async ({ request }) => {
 
 export default function App() {
   const { user } = useLoaderData<LoaderData>();
+  const [backgroundColor, setBackgroundColor] = useState("bg-sky-500");
 
   return (
     <html lang="en" className="h-full">
@@ -46,14 +49,14 @@ export default function App() {
       </head>
       <body className="h-full">
         <main className="h-full max-h-screen w-screen">
-          <div className="flex h-full w-full flex-col bg-zinc-900 px-5">
+          <div className={`transition duration-500 flex h-full w-full flex-col px-5 ${backgroundColor}`}>
             <aside className="flex justify-between py-4 text-white">
               <Link
                 to={{
                   pathname: "/",
                 }}
               >
-                BubbleTime
+                TaffyTime
               </Link>
               <div className="flex gap-2">
                 {user !== null ? (
@@ -77,7 +80,7 @@ export default function App() {
                 )}
               </div>
             </aside>
-            <Outlet />
+            <Outlet context={{ setBackgroundColor }} />
           </div>
         </main>
         <ScrollRestoration />
@@ -86,4 +89,12 @@ export default function App() {
       </body>
     </html>
   );
+}
+
+interface ContextType {
+  setBackgroundColor: Dispatch<SetStateAction<string>>,
+}
+
+export function useBackgroundColor() {
+  return useOutletContext<ContextType>();
 }
