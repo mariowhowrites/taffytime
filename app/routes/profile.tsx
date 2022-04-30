@@ -35,8 +35,6 @@ export const action: ActionFunction = async ({ request }) => {
   const intervalDuration = formData.get("intervalDuration");
   const breakTimeInTotalTime = Boolean(formData.get("breakTimeInTotalTime"));
 
-  console.debug(intervalDuration, breakTimeInTotalTime);
-
   if (intervalDuration === null) {
     return json<ActionData>(
       {
