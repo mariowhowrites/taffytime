@@ -111,6 +111,11 @@ export default function Index() {
   // timerEnd = date (25 min in the future)
   // timer = timerEnd - now
   const submit = useSubmit();
+  const [writing, setWriting] = useState("");
+
+  const onWritingChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+    // handle saving writing here
+  };
 
   const [timerIntervalID, setTimerIntervalID] = useState<NodeJS.Timer | null>(
     null
