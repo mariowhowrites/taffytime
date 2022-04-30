@@ -111,11 +111,6 @@ export default function Index() {
   // timerEnd = date (25 min in the future)
   // timer = timerEnd - now
   const submit = useSubmit();
-  const [writing, setWriting] = useState("");
-
-  const onWritingChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-    // handle saving writing here
-  };
 
   const [timerIntervalID, setTimerIntervalID] = useState<NodeJS.Timer | null>(
     null
@@ -146,7 +141,15 @@ export default function Index() {
           return newSeconds;
         });
 
-        setElapsedSeconds((seconds) => seconds + 1);
+        // we want this to be true EITHER
+        // a) if the user is counting breaks in total time, OR
+        // b) if they are not and we are working
+        if (
+          user?.breakTimeInTotalTime ||
+          timerState.status === TimerStates.WORKING
+        ) {
+          setElapsedSeconds((seconds) => seconds + 1);
+        }
       }, 1000)
     );
   };
@@ -300,8 +303,8 @@ export default function Index() {
                 })
               }
             >
-              Go to {" "}
-               {timerState.status === TimerStates.WORKING ? "Break" : "Work"}!
+              Go to{" "}
+              {timerState.status === TimerStates.WORKING ? "Break" : "Work"}!
             </button>
           </>
         ) : null}
@@ -319,6 +322,7 @@ export default function Index() {
   );
 }
 
+// handles populating the opage for GET requests
 export const loader: LoaderFunction = async ({ request }) => {
   return json<LoaderData>({
     user: await getUser(request),
