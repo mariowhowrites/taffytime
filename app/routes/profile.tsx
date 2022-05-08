@@ -126,9 +126,3 @@ export default function ProfilePage() {
   );
 }
 
-/**
- * two options for storing user settings
- *
- * 1) we can store in the users table
- * 2) we can store in a separate table in a 1-1 matchup
- */

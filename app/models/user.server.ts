@@ -61,7 +61,20 @@ export async function verifyLogin(
   return userWithoutPassword;
 }
 
-export async function updateUserIntervalDuration(
+interface SettingsObject {
+  intervalDuration: number,
+  breakTimeInTotalTime: boolean
+}
+
+
+/**
+ * two options for storing user settings
+ *
+ * 1) we can store in the users table
+ * 2) we can store in a separate table in a 1-1 matchup
+ */
+
+export async function updateUserSettings(
   user: User,
   intervalDuration: number
 ) {
