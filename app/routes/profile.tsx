@@ -7,18 +7,25 @@ import {
   useActionData,
   useLoaderData,
 } from "remix";
-import { updateUserIntervalDuration } from "~/models/user.server";
-import { getWorkSessions } from "~/models/work-session.server";
+import { updateUserSettings } from "~/models/user.server";
+import {
+  getWorkSessions,
+  getWorkSessionsInTimePeriod,
+} from "~/models/work-session.server";
 import { requireUser } from "~/session.server";
 
 interface LoaderData {
-  workSessions: Awaited<ReturnType<typeof getWorkSessions>>;
+  totalWorkSessions: Awaited<ReturnType<typeof getWorkSessions>>;
+  workSessionsInTimePeriod: Awaited<
+    ReturnType<typeof getWorkSessionsInTimePeriod>
+  >;
   user: Awaited<ReturnType<typeof requireUser>>;
 }
 
 interface ActionData {
   errors?: {
     intervalDuration?: string;
+    breakTimeInTotalTime?: string;
   };
 }
 
@@ -26,6 +33,7 @@ export const action: ActionFunction = async ({ request }) => {
   const user = await requireUser(request);
   const formData = await request.formData();
   const intervalDuration = formData.get("intervalDuration");
+  const breakTimeInTotalTime = Boolean(formData.get("breakTimeInTotalTime"));
 
   if (intervalDuration === null) {
     return json<ActionData>(
@@ -53,27 +61,39 @@ export const action: ActionFunction = async ({ request }) => {
 
   // we have validated our input
   // let's make the change
-  await updateUserIntervalDuration(user, duration);
+  await updateUserSettings(user, {
+    intervalDuration: duration,
+    breakTimeInTotalTime,
+  });
 
   return redirect("/");
 };
 
 export const loader: LoaderFunction = async ({ request }) => {
   const user = await requireUser(request);
-  const workSessions = await getWorkSessions({ userId: user.id });
-  return json<LoaderData>({ workSessions, user });
+  const totalWorkSessions = await getWorkSessions({ userId: user.id });
+  const workSessionsInTimePeriod = await getWorkSessionsInTimePeriod({
+    userId: user.id,
+  });
+  return json<LoaderData>({
+    totalWorkSessions,
+    workSessionsInTimePeriod,
+    user,
+  });
 };
 
 export default function ProfilePage() {
   const actionData = useActionData<ActionData>();
-  const { workSessions, user } = useLoaderData<LoaderData>();
+  const { totalWorkSessions, workSessionsInTimePeriod, user } = useLoaderData<LoaderData>();
 
-  const totalSecondsSpent = workSessions.reduce(
+  const totalSecondsSpent = totalWorkSessions.reduce(
     (totalSeconds, { duration }) => totalSeconds + duration,
     0
   );
-
-  
+  const secondsInTimePeriod = workSessionsInTimePeriod.reduce(
+    (totalSeconds, { duration }) => totalSeconds + duration,
+    0
+  );
 
   return (
     <div className="mx-auto w-3/5">
@@ -82,6 +102,7 @@ export default function ProfilePage() {
           <h2 className="mb-4 text-4xl font-bold">About</h2>
           <p>Email: {user.email}</p>
           <p>Total seconds spent: {totalSecondsSpent}s</p>
+          <p>Seconds spent since last Sunday: {secondsInTimePeriod}s</p>
         </section>
         <section id="settingsSection">
           <Form method="post">
@@ -109,6 +130,32 @@ export default function ProfilePage() {
                 {actionData?.errors?.intervalDuration && (
                   <div className="pt-1 text-red-700" id="interval-error">
                     {actionData.errors.intervalDuration}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="mb-4">
+              <label
+                htmlFor="breakTimeInTotalTime"
+                className="block text-sm font-medium text-white"
+              >
+                Count Break Time in Total Time?
+              </label>
+              <div className="mt-1">
+                <input
+                  id="breakTimeInTotalTime"
+                  name="breakTimeInTotalTime"
+                  defaultChecked={Boolean(user.breakTimeInTotalTime)}
+                  type="checkbox"
+                  aria-invalid={
+                    actionData?.errors?.breakTimeInTotalTime ? true : undefined
+                  }
+                  aria-describedby="break-time-error"
+                  className="rounded border border-gray-500 px-2 py-1 text-lg text-gray-700"
+                />
+                {actionData?.errors?.breakTimeInTotalTime && (
+                  <div className="pt-1 text-red-700" id="interval-error">
+                    {actionData.errors.breakTimeInTotalTime}
                   </div>
                 )}
               </div>

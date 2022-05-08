@@ -76,12 +76,13 @@ interface SettingsObject {
 
 export async function updateUserSettings(
   user: User,
-  intervalDuration: number
+  { intervalDuration, breakTimeInTotalTime }: SettingsObject
 ) {
   return prisma.user.update({
     where: { email: user.email },
     data: {
       intervalDuration,
+      breakTimeInTotalTime
     },
   });
 }

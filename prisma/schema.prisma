@@ -17,11 +17,13 @@ model User {
 
   // user settings -- todo: maybe pull into separate table?
   intervalDuration Int @default(25)
+  breakTimeInTotalTime Boolean @default(false)
 
   password Password?
   notes    Note[]
   workSessions WorkSession[]
 }
+
 model WorkSession {
   id String @id @default(cuid())
 
@@ -31,11 +33,14 @@ model WorkSession {
   // total number of cycles completed during the session
   completedCycles Int @default(0)
 
+  // TODO: get these working
+  // startedAt DateTime
+  // endedAt DateTime
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // add writing field here
-
   user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   userId String
 }
