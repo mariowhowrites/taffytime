@@ -40,7 +40,9 @@ type ActionObject = {
   [key in TimerStates]: () => ReducerType;
 };
 
-const timerReducer = (state: ReducerType, event: EventType, exec) => {
+ type ExecType = (type: EventType) => void;
+
+const timerReducer = (state: ReducerType, event: EventType, exec: ExecType) => {
   const possibleActions: ActionObject = {
     [TimerStates.READY]: () => {
       exec({ type: TimerStates.READY });
